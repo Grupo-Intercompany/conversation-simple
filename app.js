@@ -16,9 +16,24 @@
 
 'use strict';
 
+require('dotenv').config({silent: true});
+
 var express = require('express'); // app server
 var bodyParser = require('body-parser'); // parser for post requests
+
 var Conversation = require('watson-developer-cloud/conversation/v1'); // watson sdk
+var NaturalLanguageUnderstandingV1 = require('watson-developer-cloud/natural-language-understanding/v1.js');
+var natural_language_understanding = new NaturalLanguageUnderstandingV1({
+    'username': process.env.NLU_USERNAME,
+    'password': process.env.NLU_PASSWORD,
+    'version_date': '2017-02-27'
+});
+
+var AYLIENTextAPI = require('aylien_textapi'); //AYLIEN Text API
+var textapi = new AYLIENTextAPI ({
+  application_id: process.env.AYYLIENT_TEXTAPI_APP_ID || '',
+  application_key: process.env.AYYLIENT_TEXTAPI_APP_KEY || ''
+});
 
 var app = express();
 
@@ -35,6 +50,8 @@ var conversation = new Conversation({
   // url: 'https://gateway.watsonplatform.net/conversation/api',
   version_date: Conversation.VERSION_DATE_2017_04_21
 });
+
+let agendarConversa = false;
 
 // Endpoint to be call from the client side
 app.post('/api/message', function(req, res) {
@@ -57,6 +74,25 @@ app.post('/api/message', function(req, res) {
     if (err) {
       return res.status(err.code || 500).json(err);
     }
+
+    if(data.intents[0]){
+        if(data.intents[0].intent === 'agendarConversa'){
+            agendarConversa = true;
+            console.log("\nangendarConversa ", agendarConversa);
+        }
+    }
+
+    if(agendarConversa && data.context.system.branch_exited === true && data.context.system.branch_exited_reason === 'completed'){
+        console.log("\n--------------------------------\nDone\n");
+        console.log("username: ", data.context.username);
+        console.log("usermail: ", data.context.usermail);
+        console.log("userfone: ", data.context.userfone);
+        console.log("date_meeting: ", data.context.meeting_date);
+        console.log("time_meeting: ", data.context.meeting_time);
+        console.log("--------------------------------\n");
+    }
+
+
     return res.json(updateMessage(payload, data));
   });
 });
