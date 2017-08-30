@@ -25,8 +25,45 @@ var ConversationPanel = (function() {
 
   // Initialize the module
   function init() {
+
+      var settings = {
+          "async": true,
+          "crossDomain": true,
+          "url": "/api/forecast/daily",
+          "method": "GET",
+          "headers": {
+              "cache-control": "no-cache"
+          }
+      };
+
+      $.ajax(settings).done(function (response) {
+          console.log(response.forecasts[0].day.temp);
+
+          let temp = response.forecasts[0].day.temp;
+          let tempo = '';
+
+          if (temp <= 15){
+            tempo = 'muito frio';
+          } else if (temp <= 20) {
+            tempo = 'frio';
+          } else if (temp <= 25) {
+            tempo = 'bom'
+          } else if (temp <= 30) {
+            tempo = 'calor'
+          } else {
+              tempo = 'muito calor'
+          }
+
+          console.log(tempo);
+
+          Api.sendRequest('', {
+              tempo: tempo
+          });
+      });
+
     chatUpdateSetup();
-    Api.sendRequest( '', null );
+    // Api.sendRequest( '', null );
+
     setupInputBox();
   }
   // Set up callbacks on payload setters in Api module

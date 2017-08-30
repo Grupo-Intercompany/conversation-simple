@@ -21,8 +21,11 @@
   "dependencies": {
     "aylien_textapi": "^0.6.0",
     "body-parser": "^1.15.2",
+    "cloudant": "^1.8.0",
     "dotenv": "^2.0.0",
     "express": "^4.14.0",
+    "http": "0.0.0",
+    "request": "^2.81.0",
     "watson-developer-cloud": "^2.31.1"
   },
   "devDependencies": {

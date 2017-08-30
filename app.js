@@ -20,6 +20,7 @@ require('dotenv').config({silent: true});
 
 var express = require('express'); // app server
 var bodyParser = require('body-parser'); // parser for post requests
+var request = require('request');
 
 var Conversation = require('watson-developer-cloud/conversation/v1'); // watson sdk
 var NaturalLanguageUnderstandingV1 = require('watson-developer-cloud/natural-language-understanding/v1.js');
@@ -28,6 +29,10 @@ var natural_language_understanding = new NaturalLanguageUnderstandingV1({
     'password': process.env.NLU_PASSWORD,
     'version_date': '2017-02-27'
 });
+var Cloudant = require('./server/configs/cloudant').init;
+var cloudant = require('./server/cloudant');
+
+var weather_host = process.env.WEATHER_URL;
 
 var AYLIENTextAPI = require('aylien_textapi'); //AYLIEN Text API
 var textapi = new AYLIENTextAPI ({
@@ -52,6 +57,78 @@ var conversation = new Conversation({
 });
 
 let agendarConversa = false;
+
+app.use(function(req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
+});
+
+app.get("/env", function (req, res) {
+    return res.status(200).send(process.env);
+});
+
+app.get("/vcap", function (req, res) {
+    return res.status(200).send(JSON.parse(process.env.VCAP_SERVICES));
+});
+
+app.get("/cloudant", function (req, res) {
+    cloudant(Cloudant, "chat").getAllDocs().then(
+        res.send.bind(res)
+    );
+});
+
+
+function weatherAPI(path, qs, done) {
+    let url = weather_host + path;
+    console.log(url, qs);
+
+    request(
+        {
+            url: url,
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json;charset=utf-8",
+                "Accept": "application/json"
+            },
+            qs: qs
+        }, function (error, req, data) {
+            if (error) {
+                done(error);
+            } else {
+                if (req.statusCode >= 200 && req.statusCode < 400){
+                    try {
+                        done(null, JSON.parse(data));
+                    } catch (e) {
+                        console.log(e);
+                        done(e);
+                    }
+                } else {
+                    console.log(error);
+                    done({message: req.statusCode, data: data});
+                }
+            }
+        }
+    );
+}
+
+app.get('/api/forecast/daily', function (req,res) {
+    let geocode = "-23.62,-46.64".split(",");
+
+    weatherAPI("/api/weather/v1/geocode/" + geocode[0] + "/" + geocode[1] + "/forecast/daily/10day.json", {
+       units: "m",
+       language: "en"
+    }, function (error, result) {
+        if (error) {
+            console.log(error);
+            res.send(error).status(400);
+        } else {
+            console.log("10 days forecast");
+            res.json(result);
+        }
+    })
+});
+
 
 // Endpoint to be call from the client side
 app.post('/api/message', function(req, res) {
@@ -83,13 +160,29 @@ app.post('/api/message', function(req, res) {
     }
 
     if(agendarConversa && data.context.system.branch_exited === true && data.context.system.branch_exited_reason === 'completed'){
+
+        let meeting_info = {
+            username: data.context.username,
+            usermail: data.context.usermail,
+            userfone: data.context.userfone,
+            meeting_date: data.context.meeting_date,
+            meeting_time: data.context.meeting_time
+        };
+
         console.log("\n--------------------------------\nDone\n");
-        console.log("username: ", data.context.username);
-        console.log("usermail: ", data.context.usermail);
-        console.log("userfone: ", data.context.userfone);
-        console.log("date_meeting: ", data.context.meeting_date);
-        console.log("time_meeting: ", data.context.meeting_time);
+        console.log(meeting_info);
         console.log("--------------------------------\n");
+
+
+
+        cloudant(Cloudant, "chat").insertDoc(meeting_info).then(function (res) {
+            console.log("Meeting info saved in Cloudant: ", res);
+        }, function (error) {
+            console.log("Cloudant error: ", error.error, error.reason);
+            reject("Cloudant error: ", error.error, error.reason);
+        });
+
+        agendarConversa = false;
     }
 
 
@@ -111,7 +204,7 @@ function updateMessage(input, response) {
     return response;
   }
   if (response.intents && response.intents[0]) {
-    var intent = response.intents[0];
+    let intent = response.intents[0];
     // Depending on the confidence of the response the app can return different messages.
     // The confidence will vary depending on how well the system is trained. The service will always try to assign
     // a class/intent to the input. If the confidence is low, then it suggests the service is unsure of the
