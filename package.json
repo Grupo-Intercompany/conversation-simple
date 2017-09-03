@@ -20,8 +20,9 @@
   "license": "Apache-2.0",
   "dependencies": {
     "aylien_textapi": "^0.6.0",
-    "body-parser": "^1.15.2",
+    "body-parser": "^1.17.2",
     "cloudant": "^1.8.0",
+    "cookie-parser": "^1.4.3",
     "dotenv": "^2.0.0",
     "express": "^4.14.0",
     "http": "0.0.0",

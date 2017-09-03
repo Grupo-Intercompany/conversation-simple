@@ -30,16 +30,31 @@ var ConversationPanel = (function() {
           "async": true,
           "crossDomain": true,
           "url": "/api/forecast/daily",
-          "method": "GET",
+          "method": "POST",
           "headers": {
+              "content-type": "application/x-www-form-urlencoded",
               "cache-control": "no-cache"
+          },
+          "data": {
+              "lat": "-23.62",
+              "lng": "-46.64"
           }
       };
 
       $.ajax(settings).done(function (response) {
-          console.log(response.forecasts[0].day.temp);
 
-          let temp = response.forecasts[0].day.temp;
+          // console.log(response.forecasts[0]);
+          // console.log(response.forecasts[0].night);
+
+          let temp = "";
+
+          if (response.forecasts[0].day) {
+            temp = response.forecasts[0].day.temp;
+          } else if (response.forecasts[0].night) {
+            temp = response.forecasts[0].night.temp;
+          }
+
+          // let temp = response.forecasts[0].day.temp || response.forecasts[0].night;
           let tempo = '';
 
           if (temp <= 15){
