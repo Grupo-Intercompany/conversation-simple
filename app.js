@@ -34,8 +34,6 @@ var natural_language_understanding = new NaturalLanguageUnderstandingV1({
 var Cloudant = require('./server/configs/cloudant').init;
 var cloudant = require('./server/cloudant');
 
-var weather_host = process.env.WEATHER_URL;
-
 var AYLIENTextAPI = require('aylien_textapi'); //AYLIEN Text API
 var textapi = new AYLIENTextAPI ({
   application_id: process.env.AYYLIENT_TEXTAPI_APP_ID || '',
@@ -57,6 +55,8 @@ var conversation = new Conversation({
   // url: 'https://gateway.watsonplatform.net/conversation/api',
   version_date: Conversation.VERSION_DATE_2017_04_21
 });
+
+var weather = require('./server/weatherHandler');
 
 
 app.use(function(req, res, next) {
@@ -83,45 +83,26 @@ app.get("/cloudant", function (req, res) {
 });
 
 
-function weatherAPI(path, qs, done) {
-    let url = weather_host + path;
-    console.log(url, qs);
-
-    request(
-        {
-            url: url,
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json;charset=utf-8",
-                "Accept": "application/json"
-            },
-            qs: qs
-        }, function (error, req, data) {
-            if (error) {
-                done(error);
-            } else {
-                if (req.statusCode >= 200 && req.statusCode < 400){
-                    try {
-                        done(null, JSON.parse(data));
-                    } catch (e) {
-                        console.log(e);
-                        done(e);
-                    }
-                } else {
-                    console.log(error);
-                    done({message: req.statusCode, data: data});
-                }
-            }
-        }
-    );
-}
-
 app.post('/api/forecast/daily', function (req,res) {
     // let geocode = "-23.62,-46.64".split(",");
     // req = JSON.parse(req);
     let geocode = [req.body.lat, req.body.lng];
     console.log(req.body, geocode);
 
+    weather.weatherAPI("/api/weather/v1/geocode/" + geocode[0] + "/" + geocode[1] + "/forecast/daily/10day.json", {
+        units: "m",
+        language: "en"
+    }, function (error, result) {
+        if (error) {
+            console.log(error);
+            res.send(error).status(400);
+        } else {
+            console.log("10 days forecast");
+            res.json(result);
+        }
+    });
+
+    /*
     weatherAPI("/api/weather/v1/geocode/" + geocode[0] + "/" + geocode[1] + "/forecast/daily/10day.json", {
        units: "m",
        language: "en"
@@ -134,6 +115,7 @@ app.post('/api/forecast/daily', function (req,res) {
             res.json(result);
         }
     })
+    */
 });
 
 
@@ -143,7 +125,7 @@ app.post('/api/message', function(req, res) {
   let agendarConversa = false;
   let weather = false;
 
-  var workspace = process.env.WORKSPACE_ID || '<workspace-id>';
+  let workspace = process.env.WORKSPACE_ID || '<workspace-id>';
   if (!workspace || workspace === '<workspace-id>') {
     return res.json({
       'output': {
@@ -151,7 +133,7 @@ app.post('/api/message', function(req, res) {
       }
     });
   }
-  var payload = {
+  let payload = {
     workspace_id: workspace,
     context: req.body.context || {},
     input: req.body.input || {}
