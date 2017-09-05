@@ -101,21 +101,6 @@ app.post('/api/forecast/daily', function (req,res) {
             res.json(result);
         }
     });
-
-    /*
-    weatherAPI("/api/weather/v1/geocode/" + geocode[0] + "/" + geocode[1] + "/forecast/daily/10day.json", {
-       units: "m",
-       language: "en"
-    }, function (error, result) {
-        if (error) {
-            console.log(error);
-            res.send(error).status(400);
-        } else {
-            console.log("10 days forecast");
-            res.json(result);
-        }
-    })
-    */
 });
 
 
@@ -186,69 +171,22 @@ app.post('/api/message', function(req, res) {
         // Exemplo de URL utilizada para obter a longitude e latitude do local informado
         //http://maps.googleapis.com/maps/api/geocode/json?address=s%C3%A3o%20paulo+FL&sensor=false
         let url = ["http://maps.googleapis.com/maps/api/geocode/json?address=", encodeURI(data.entities[0].value), "&sensor=false"].join("").toLowerCase();
-        // console.log(url);
 
-        request(url, function (error, response, body) {
-            if (error){
-                console.log(error);
-            } else {
-                body = JSON.parse(body);
+        let locationHandler = require('./server/locationHandler');
 
-                let lat = body.results[0].geometry.location.lat;
-                let lng = body.results[0].geometry.location.lng;
-                console.log("weather", lat, lng);
+        locationHandler.location(url).then(
+            (response) => {
+                data.output.text = response;
+                weather = false;
 
-                let options = {
-                    method: 'POST',
-                    url: 'http://localhost:3000/api/forecast/daily',
-                    headers:
-                        { 'content-type': 'application/json' },
-                    body: { lat: lat, lng: lng },
-                    json: true
-                };
-
-                request(options, function (error, response, body) {
-                    if (error) {
-                        console.log(error);
-                        return;
-                    }
-
-                    let temp;
-                    let tempo;
-
-                    if (response.body.forecasts[0].day){
-                        temp = response.body.forecasts[0].day.temp;
-                    } else if (response.body.forecasts[0].night){
-                        temp = response.body.forecasts[0].night.temp;
-                    }
-
-                    if (temp <= 15){
-                        tempo = 'muito frio';
-                    } else if (temp <= 20) {
-                        tempo = 'frio';
-                    } else if (temp <= 25) {
-                        tempo = 'bom'
-                    } else if (temp <= 30) {
-                        tempo = 'calor'
-                    } else {
-                        tempo = 'muito calor'
-                    }
-
-                    data.output.text = 'O tempo por lá está ' + tempo;
-
-                    weather = false;
-
-                    return res.json(updateMessage(payload, data));
-                });
+                return res.json(updateMessage(payload, data));
             }
-        });
+        );
 
     }
     else {
         return res.json(updateMessage(payload, data));
     }
-
-    // return res.json(updateMessage(payload, data));
   });
 });
 
