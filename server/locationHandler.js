@@ -15,11 +15,11 @@
 
                     let lat = body.results[0].geometry.location.lat;
                     let lng = body.results[0].geometry.location.lng;
-                    console.log("weather", lat, lng);
 
                     let options = {
                         method: 'POST',
                         url: 'http://localhost:3000/api/forecast/daily',
+                        // url: '/api/forecast/daily',
                         headers:
                             { 'content-type': 'application/json' },
                         body: { lat: lat, lng: lng },
@@ -52,8 +52,6 @@
                         } else {
                             tempo = 'muito calor'
                         }
-
-                        console.log("locationHandler ", tempo);
 
                         resolve ('O tempo por lá está ' + tempo);
                     });

@@ -56,12 +56,13 @@ var conversation = new Conversation({
   version_date: Conversation.VERSION_DATE_2017_04_21
 });
 
-var weather = require('./server/weatherHandler');
-
+let weather = require('./server/weatherHandler');
+let locationHandler = require('./server/locationHandler');
 
 app.use(function(req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT");
     next();
 });
 app.use(bodyParser.json());
@@ -82,10 +83,7 @@ app.get("/cloudant", function (req, res) {
     );
 });
 
-
 app.post('/api/forecast/daily', function (req,res) {
-    // let geocode = "-23.62,-46.64".split(",");
-    // req = JSON.parse(req);
     let geocode = [req.body.lat, req.body.lng];
     console.log(req.body, geocode);
 
@@ -107,6 +105,11 @@ app.post('/api/forecast/daily', function (req,res) {
 // Endpoint to be call from the client side
 app.post('/api/message', function(req, res) {
 
+    let URL  = require('url');
+    const url_parts = req.url;
+    // let url_parts = url(req.url);
+    console.log(url_parts);
+
   let agendarConversa = false;
   let weather = false;
 
@@ -123,6 +126,8 @@ app.post('/api/message', function(req, res) {
     context: req.body.context || {},
     input: req.body.input || {}
   };
+
+  console.log(payload);
 
   // Send the input to the conversation service
   conversation.message(payload, function(err, data) {
@@ -171,8 +176,6 @@ app.post('/api/message', function(req, res) {
         // Exemplo de URL utilizada para obter a longitude e latitude do local informado
         //http://maps.googleapis.com/maps/api/geocode/json?address=s%C3%A3o%20paulo+FL&sensor=false
         let url = ["http://maps.googleapis.com/maps/api/geocode/json?address=", encodeURI(data.entities[0].value), "&sensor=false"].join("").toLowerCase();
-
-        let locationHandler = require('./server/locationHandler');
 
         locationHandler.location(url).then(
             (response) => {
