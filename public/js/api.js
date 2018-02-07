@@ -4,8 +4,10 @@ var Api = (function() {
   var requestPayload;
   var responsePayload;
   var messageEndpoint = '/api/message';
-    // var messageEndpoint = 'https://chat-ic.mybluemix.net/api/message';
-blue
+  // var messageEndpoint = 'http://iris-messenger.mybluemix.net/chat';
+  // var messageEndpoint = 'https://conversation-ic.mybluemix.net/api/message';
+  // var messageEndpoint = 'https://chat-ic.mybluemix.net/api/message';
+
   // Publicly accessible methods defined
   return {
     sendRequest: sendRequest,
@@ -22,7 +24,9 @@ blue
       return responsePayload;
     },
     setResponsePayload: function(newPayloadStr) {
-      responsePayload = JSON.parse(newPayloadStr);
+      // console.log(newPayloadStr);
+      // responsePayload = JSON.parse(newPayloadStr);
+      responsePayload = newPayloadStr;
     }
   };
 
@@ -30,14 +34,15 @@ blue
   function sendRequest(text, context) {
     // Build request payload
     var payloadToWatson = {};
+    console.log("sendRequest Text");
+    console.log(text);
     if (text) {
-      payloadToWatson.input = {
-        text: text
-      };
+      payloadToWatson.text = text.text;
+      payloadToWatson.user = text.user;
     }
-    if (context) {
-      payloadToWatson.context = context;
-    }
+    console.log("sendRequest payloadToWatson");
+    console.log(payloadToWatson);
+
 
     // Built http request
     var http = new XMLHttpRequest();

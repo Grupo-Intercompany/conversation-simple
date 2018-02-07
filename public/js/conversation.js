@@ -26,55 +26,7 @@ var ConversationPanel = (function() {
   // Initialize the module
   function init() {
 
-      var settings = {
-          "async": true,
-          "crossDomain": true,
-          "url": "/api/forecast/daily",
-          "method": "POST",
-          "headers": {
-              "content-type": "application/x-www-form-urlencoded",
-              "cache-control": "no-cache"
-          },
-          "data": {
-              "lat": "-23.62",
-              "lng": "-46.64"
-          }
-      };
-
-      $.ajax(settings).done(function (response) {
-
-          // console.log(response.forecasts[0]);
-          // console.log(response.forecasts[0].night);
-
-          let temp = "";
-
-          if (response.forecasts[0].day) {
-            temp = response.forecasts[0].day.temp;
-          } else if (response.forecasts[0].night) {
-            temp = response.forecasts[0].night.temp;
-          }
-
-          // let temp = response.forecasts[0].day.temp || response.forecasts[0].night;
-          let tempo = '';
-
-          if (temp <= 15){
-            tempo = 'muito frio';
-          } else if (temp <= 20) {
-            tempo = 'frio';
-          } else if (temp <= 25) {
-            tempo = 'bom'
-          } else if (temp <= 30) {
-            tempo = 'calor'
-          } else {
-              tempo = 'muito calor'
-          }
-
-          console.log(tempo);
-
-          Api.sendRequest('', {
-              tempo: tempo
-          });
-      });
+    Api.sendRequest('Oi', {});
 
     chatUpdateSetup();
     // Api.sendRequest( '', null );
@@ -87,13 +39,15 @@ var ConversationPanel = (function() {
     var currentRequestPayloadSetter = Api.setRequestPayload;
     Api.setRequestPayload = function(newPayloadStr) {
       currentRequestPayloadSetter.call(Api, newPayloadStr);
-      displayMessage(JSON.parse(newPayloadStr), settings.authorTypes.user);
+      // displayMessage(JSON.parse(newPayloadStr), settings.authorTypes.user);
+      displayMessage(newPayloadStr, settings.authorTypes.user);
     };
 
     var currentResponsePayloadSetter = Api.setResponsePayload;
     Api.setResponsePayload = function(newPayloadStr) {
       currentResponsePayloadSetter.call(Api, newPayloadStr);
-      displayMessage(JSON.parse(newPayloadStr), settings.authorTypes.watson);
+      // displayMessage(JSON.parse(newPayloadStr), settings.authorTypes.watson);
+      displayMessage(newPayloadStr, settings.authorTypes.watson);
     };
   }
 
@@ -167,8 +121,12 @@ var ConversationPanel = (function() {
   // Display a user or Watson message that has just been sent/received
   function displayMessage(newPayload, typeValue) {
     var isUser = isUserMessage(typeValue);
-    var textExists = (newPayload.input && newPayload.input.text)
-      || (newPayload.output && newPayload.output.text);
+    // var textExists = (newPayload.input && newPayload.input.text)
+    //   || (newPayload.output && newPayload.output.text);
+    newPayload = JSON.parse(newPayload);
+    var textExists = newPayload.text || newPayload;
+    console.log("textExists");
+    console.log(textExists);
     if (isUser !== null && textExists) {
       // Create new message DOM element
       var messageDivs = buildMessageDomElements(newPayload, isUser);
@@ -207,7 +165,21 @@ var ConversationPanel = (function() {
 
   // Constructs new DOM element from a message payload
   function buildMessageDomElements(newPayload, isUser) {
-    var textArray = isUser ? newPayload.input.text : newPayload.output.text;
+    // var textArray = isUser ? newPayload.input.text : newPayload.output.text;
+    var textArray;
+
+    console.log("buildMessageDomElements");
+    console.log(newPayload);
+
+    if(isUser){
+      // textArray = JSON.parse(newPayload);
+      textArray = newPayload.text;
+      textArray = textArray.text;
+    } else {
+      textArray = newPayload.text;
+    }
+
+    // var textArray = isUser ? JSON.stringify(newPayload).text : newPayload;
     if (Object.prototype.toString.call( textArray ) !== '[object Array]') {
       textArray = [textArray];
     }
@@ -270,7 +242,12 @@ var ConversationPanel = (function() {
       }
 
       // Send the user message
-      Api.sendRequest(inputBox.value, context);
+      var obj = {
+        text: inputBox.value,
+        user: "1364635793"
+      };
+      Api.sendRequest(obj, context);
+      // Api.sendRequest(inputBox.value, context);
 
       // Clear input box for further messages
       inputBox.value = '';
