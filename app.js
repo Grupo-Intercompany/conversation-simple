@@ -25,20 +25,17 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 
 var Conversation = require('watson-developer-cloud/conversation/v1'); // watson sdk
+/*
 var NaturalLanguageUnderstandingV1 = require('watson-developer-cloud/natural-language-understanding/v1.js');
 var natural_language_understanding = new NaturalLanguageUnderstandingV1({
     'username': process.env.NLU_USERNAME,
     'password': process.env.NLU_PASSWORD,
     'version_date': '2017-02-27'
 });
+*/
 var Cloudant = require('./server/configs/cloudant').init;
 var cloudant = require('./server/cloudant');
 
-var AYLIENTextAPI = require('aylien_textapi'); //AYLIEN Text API
-var textapi = new AYLIENTextAPI ({
-  application_id: process.env.AYYLIENT_TEXTAPI_APP_ID || '',
-  application_key: process.env.AYYLIENT_TEXTAPI_APP_KEY || ''
-});
 
 var app = express();
 
