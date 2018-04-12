@@ -5,7 +5,6 @@ var Api = (function() {
   var responsePayload;
   var messageEndpoint = '/api/message';
     // var messageEndpoint = 'https://chat-ic.mybluemix.net/api/message';
-blue
   // Publicly accessible methods defined
   return {
     sendRequest: sendRequest,

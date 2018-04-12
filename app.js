@@ -102,11 +102,6 @@ app.post('/api/forecast/daily', function (req,res) {
 // Endpoint to be call from the client side
 app.post('/api/message', function(req, res) {
 
-    let URL  = require('url');
-    const url_parts = req.url;
-    // let url_parts = url(req.url);
-    console.log(url_parts);
-
   let agendarConversa = false;
   let weather = false;
 
@@ -118,18 +113,26 @@ app.post('/api/message', function(req, res) {
       }
     });
   }
+
+  console.log("req.body");
+  console.log(req.body);
+
   let payload = {
     workspace_id: workspace,
     context: req.body.context || {},
-    input: req.body.input || {}
+    input: req.body.input || {"text" : req.body.text } || {}
   };
+  if (payload.input.text === undefined){
+    payload.input.text = "";
+  }
 
+  console.log("Payload to Watson");
   console.log(payload);
 
   // Send the input to the conversation service
   conversation.message(payload, function(err, data) {
     if (err) {
-      return res.status(err.code || 500).json(err);
+      return res.status(err.code || 500).json(err);d
     }
 
     if(data.intents[0]){
@@ -197,10 +200,18 @@ app.post('/api/message', function(req, res) {
  * @return {Object}          The response with the updated message
  */
 function updateMessage(input, response) {
+
+  console.log("updateMessage input");
+  console.log(input);
+  console.log("updateMessage response");
+  console.log(response);
+
   var responseText = null;
   if (!response.output) {
     response.output = {};
   } else {
+    response.output.text = response.output.text;
+    response.text = response.output.text;
     return response;
   }
   if (response.intents && response.intents[0]) {
