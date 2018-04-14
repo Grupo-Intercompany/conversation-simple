@@ -22,22 +22,14 @@ var express = require('express'); // app server
 var bodyParser = require('body-parser'); // parser for post requests
 var request = require('request');
 var cookieParser = require('cookie-parser');
-var bodyParser = require('body-parser');
 
 var Conversation = require('watson-developer-cloud/conversation/v1'); // watson sdk
-/*
-var NaturalLanguageUnderstandingV1 = require('watson-developer-cloud/natural-language-understanding/v1.js');
-var natural_language_understanding = new NaturalLanguageUnderstandingV1({
-    'username': process.env.NLU_USERNAME,
-    'password': process.env.NLU_PASSWORD,
-    'version_date': '2017-02-27'
-});
-*/
 var Cloudant = require('./server/configs/cloudant').init;
 var cloudant = require('./server/cloudant');
 
 
 var app = express();
+
 
 // Bootstrap application settings
 app.use(express.static('./public')); // load UI from public folder
@@ -45,15 +37,13 @@ app.use(bodyParser.json());
 
 // Create the service wrapper
 var conversation = new Conversation({
-  // If unspecified here, the CONVERSATION_USERNAME and CONVERSATION_PASSWORD env properties will be checked
+  // The CONVERSATION_USERNAME and CONVERSATION_PASSWORD env properties will be checked
   // After that, the SDK will fall back to the bluemix-provided VCAP_SERVICES environment property
-  // username: '<username>',
-  // password: '<password>',
   // url: 'https://gateway.watsonplatform.net/conversation/api',
   version_date: Conversation.VERSION_DATE_2017_04_21
 });
 
-let weather = require('./server/weatherHandler');
+let Weather = require('./server/weatherHandler');
 let locationHandler = require('./server/locationHandler');
 
 app.use(function(req, res, next) {
@@ -84,7 +74,7 @@ app.post('/api/forecast/daily', function (req,res) {
     let geocode = [req.body.lat, req.body.lng];
     console.log(req.body, geocode);
 
-    weather.weatherAPI("/api/weather/v1/geocode/" + geocode[0] + "/" + geocode[1] + "/forecast/daily/10day.json", {
+  Weather.weatherAPI("/api/weather/v1/geocode/" + geocode[0] + "/" + geocode[1] + "/forecast/daily/10day.json", {
         units: "m",
         language: "en"
     }, function (error, result) {
@@ -109,13 +99,10 @@ app.post('/api/message', function(req, res) {
   if (!workspace || workspace === '<workspace-id>') {
     return res.json({
       'output': {
-        'text': 'The app has not been configured with a <b>WORKSPACE_ID</b> environment variable. Please refer to the ' + '<a href="https://github.com/watson-developer-cloud/conversation-simple">README</a> documentation on how to set this variable. <br>' + 'Once a workspace has been defined the intents may be imported from ' + '<a href="https://github.com/watson-developer-cloud/conversation-simple/blob/master/training/car_workspace.json">here</a> in order to get a working application.'
+        'text': 'The app has not been configured with a <b>WORKSPACE_ID</b> environment variable.'
       }
     });
   }
-
-  console.log("req.body");
-  console.log(req.body);
 
   let payload = {
     workspace_id: workspace,
@@ -126,8 +113,6 @@ app.post('/api/message', function(req, res) {
     payload.input.text = "";
   }
 
-  console.log("Payload to Watson");
-  console.log(payload);
 
   // Send the input to the conversation service
   conversation.message(payload, function(err, data) {
@@ -136,6 +121,7 @@ app.post('/api/message', function(req, res) {
     }
 
     if(data.intents[0]){
+      console.log("data.intents[0");
         if(data.intents[0].intent === 'agendarConversa'){
             agendarConversa = true;
             console.log("\nangendarConversa ", agendarConversa);
@@ -143,6 +129,20 @@ app.post('/api/message', function(req, res) {
             weather = true;
             console.log("\nweather ", weather);
         }
+    } else if (!data.intents[0]) {
+      if (data.output.nodes_visited[0] === 'Welcome') {
+        console.log("Welcome");
+        console.log(data);
+        Weather.weatherAPI("").then((tempo) => {
+
+          data.context.tempo = tempo.temperature_phrase;
+
+          console.log("then");
+          console.log(data);
+
+          return res.json(updateMessage(payload, data));
+        });
+      }
     }
 
     if(agendarConversa && data.context.system.branch_exited === true && data.context.system.branch_exited_reason === 'completed'){
@@ -188,7 +188,7 @@ app.post('/api/message', function(req, res) {
 
     }
     else {
-        return res.json(updateMessage(payload, data));
+        // return res.json(updateMessage(payload, data));
     }
   });
 });
@@ -201,8 +201,6 @@ app.post('/api/message', function(req, res) {
  */
 function updateMessage(input, response) {
 
-  console.log("updateMessage input");
-  console.log(input);
   console.log("updateMessage response");
   console.log(response);
 
@@ -210,7 +208,6 @@ function updateMessage(input, response) {
   if (!response.output) {
     response.output = {};
   } else {
-    response.output.text = response.output.text;
     response.text = response.output.text;
     return response;
   }
