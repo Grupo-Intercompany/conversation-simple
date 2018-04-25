@@ -82,9 +82,17 @@ app.post('/api/message', function(req, res) {
   }
 
   if(req.body.text){
-    payload.text = req.body.text;
+    if (req.body.text.length <= 10){
+      console.log("if");
+      while (payload.text <= 10){
+        console.log("while " + payload.text.length);
+        payload.text = [req.body.text, " ", req.body.text, " "].join("");
+      }
+    } else {
+      payload.text = req.body.text;
+    }
   } else {
-    payload.text = "Oi";
+    payload.text = "Oi oi oi oi";
   }
 
   console.log(payload);
