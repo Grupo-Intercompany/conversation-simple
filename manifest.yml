@@ -4,12 +4,12 @@ declared-services:
     label: conversation
     plan: free
 applications:
-- name: conversation-ic
+- name: c-chat
   command: npm start
   path: .
   memory: 256M
   instances: 1
   services:
-  - Conversation-IC
+  - Conversation
   env:
     NPM_CONFIG_PRODUCTION: false

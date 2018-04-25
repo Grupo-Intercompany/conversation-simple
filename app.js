@@ -16,15 +16,9 @@
 
 'use strict';
 
-require('dotenv').config({silent: true});
-
 var express = require('express'); // app server
 var bodyParser = require('body-parser'); // parser for post requests
-var request = require('request');
-var cookieParser = require('cookie-parser');
-
-var Cloudant = require('./server/configs/cloudant').init;
-var cloudant = require('./server/cloudant');
+var Conversation = require('watson-developer-cloud/conversation/v1'); // watson sdk
 
 var app = express();
 
@@ -32,101 +26,72 @@ var app = express();
 app.use(express.static('./public')); // load UI from public folder
 app.use(bodyParser.json());
 
-
-let uidGenerator = require('./server/uidGenerator');
-
-
-app.use(function(req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT");
-    next();
+// Create the service wrapper
+var conversation = new Conversation({
+  // If unspecified here, the CONVERSATION_USERNAME and CONVERSATION_PASSWORD env properties will be checked
+  // After that, the SDK will fall back to the bluemix-provided VCAP_SERVICES environment property
+  // username: '<username>',
+  // password: '<password>',
+  url: 'https://gateway.watsonplatform.net/conversation/api',
+  version_date: '2016-10-21',
+  version: 'v1'
 });
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cookieParser());
-
-
-app.get("/teste", function (req, res) {
-  return res.status(200).send("Foi");
-});
-
-app.get("/env", function (req, res) {
-    return res.status(200).send(process.env);
-});
-
-app.get("/vcap", function (req, res) {
-    return res.status(200).send(JSON.parse(process.env.VCAP_SERVICES));
-});
-
-app.get("/cloudant", function (req, res) {
-    cloudant(Cloudant, "chat").getAllDocs().then(
-        res.send.bind(res)
-    );
-});
-
 
 // Endpoint to be call from the client side
 app.post('/api/message', function(req, res) {
-
-  let payload = {
-    user : "",
-    text: "",
-    instance: "intercompany"
-  };
-
-  if(req.body.user){
-    payload.user = req.body.user;
-  } else {
-    payload.user = uidGenerator.generateUniqueId();
-  }
-
-  if(req.body.text){
-    if (req.body.text.length <= 10){
-      console.log("if");
-      while (payload.text <= 10){
-        console.log("while " + payload.text.length);
-        payload.text = [req.body.text, " ", req.body.text, " "].join("");
+  var workspace = process.env.WORKSPACE_ID || '<workspace-id>';
+  if (!workspace || workspace === '<workspace-id>') {
+    return res.json({
+      'output': {
+        'text': 'The app has not been configured with a <b>WORKSPACE_ID</b> environment variable. Please refer to the ' + '<a href="https://github.com/watson-developer-cloud/conversation-simple">README</a> documentation on how to set this variable. <br>' + 'Once a workspace has been defined the intents may be imported from ' + '<a href="https://github.com/watson-developer-cloud/conversation-simple/blob/master/training/car_workspace.json">here</a> in order to get a working application.'
       }
-    } else {
-      payload.text = req.body.text;
-    }
-  } else {
-    payload.text = "Oi oi oi oi";
+    });
   }
-
-  console.log(payload);
-
-  let options = {
-    method: 'POST',
-    url: 'http://iris-messenger.mybluemix.net/chat',
-    headers: { 'Content-Type': 'application/json' },
-    body: payload,
-    json: true
+  var payload = {
+    workspace_id: workspace,
+    context: req.body.context || {},
+    input: req.body.input || {}
   };
 
-  request(options, function (error, response, body) {
-    if (error) {
-      res.send(error);
-      throw new Error(error);
+  // Send the input to the conversation service
+  conversation.message(payload, function(err, data) {
+    if (err) {
+      return res.status(err.code || 500).json(err);
     }
-
-
-    let payloadResponse = {
-      text: body,
-      user: payload.user
-      /*output: {
-        text: payload,
-        user: user
-      }*/
-    };
-
-    console.log("request");
-    console.log(payloadResponse);
-
-    res.send(payloadResponse);
+    return res.json(updateMessage(payload, data));
   });
-
 });
+
+/**
+ * Updates the response text using the intent confidence
+ * @param  {Object} input The request to the Conversation service
+ * @param  {Object} response The response from the Conversation service
+ * @return {Object}          The response with the updated message
+ */
+function updateMessage(input, response) {
+  var responseText = null;
+  if (!response.output) {
+    response.output = {};
+  } else {
+    return response;
+  }
+  if (response.intents && response.intents[0]) {
+    var intent = response.intents[0];
+    // Depending on the confidence of the response the app can return different messages.
+    // The confidence will vary depending on how well the system is trained. The service will always try to assign
+    // a class/intent to the input. If the confidence is low, then it suggests the service is unsure of the
+    // user's intent . In these cases it is usually best to return a disambiguation message
+    // ('I did not understand your intent, please rephrase your question', etc..)
+    if (intent.confidence >= 0.75) {
+      responseText = 'I understood your intent was ' + intent.intent;
+    } else if (intent.confidence >= 0.5) {
+      responseText = 'I think your intent was ' + intent.intent;
+    } else {
+      responseText = 'I did not understand your intent';
+    }
+  }
+  response.output.text = responseText;
+  return response;
+}
 
 module.exports = app;
